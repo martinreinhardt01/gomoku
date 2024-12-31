@@ -7,10 +7,24 @@ class GomokuVisualizer:
     def __init__(self, size: int = 15, cell_size: int = 50):
         self.size = size
         self.cell_size = cell_size
-        self.board_img = Image.open("gomoku_board.png")
+        self.board_img = self.generate_board_image(size)
         self.black_stone = Image.open("black_stone.png").resize((cell_size, cell_size))
         self.white_stone = Image.open("white_stone.png").resize((cell_size, cell_size))
         self.clicked_position = None
+
+    def generate_board_image(self, size: int) -> Image.Image:
+        """Generate an empty Gomoku board image."""
+        img_size = size * self.cell_size
+        board = Image.new("RGB", (img_size, img_size), "burlywood")
+        draw = ImageDraw.Draw(board)
+
+        # Draw the grid
+        for i in range(size):
+            line_pos = i * self.cell_size
+            draw.line([(line_pos, 0), (line_pos, img_size)], fill="black", width=1)
+            draw.line([(0, line_pos), (img_size, line_pos)], fill="black", width=1)
+
+        return board
 
     def render_board(self, board: List[List[str]], winner: str = None) -> Tuple[int, int]:
         self.clicked_position = None
@@ -115,22 +129,6 @@ class Gomoku:
             except KeyboardInterrupt:
                 print("\nGame terminated.")
                 break
-
-    @staticmethod
-    def generate_board_image(size: int = 15, cell_size: int = 50) -> None:
-        """Generate an empty Gomoku board image."""
-        img_size = size * cell_size
-        board = Image.new("RGB", (img_size, img_size), "burlywood")
-        draw = ImageDraw.Draw(board)
-
-        # Draw the grid
-        for i in range(size):
-            line_pos = i * cell_size
-            draw.line([(line_pos, 0), (line_pos, img_size)], fill="black", width=1)
-            draw.line([(0, line_pos), (img_size, line_pos)], fill="black", width=1)
-
-        board.save("gomoku_board.png")
-        print("Gomoku board image generated: gomoku_board.png")
 
     @staticmethod
     def generate_stone_image(color: str, size: int = 40) -> None:
