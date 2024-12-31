@@ -1,6 +1,7 @@
 from typing import List, Tuple
 from PIL import Image, ImageDraw
 import matplotlib.pyplot as plt
+from matplotlib.backend_bases import MouseEvent
 
 class GomokuVisualizer:
     def __init__(self, size: int = 15, cell_size: int = 50):
@@ -9,11 +10,10 @@ class GomokuVisualizer:
         self.board_img = Image.open("gomoku_board.png")
         self.black_stone = Image.open("black_stone.png").resize((cell_size, cell_size))
         self.white_stone = Image.open("white_stone.png").resize((cell_size, cell_size))
-        self.current_display = None
+        self.clicked_position = None
 
-    def render_board(self, board: List[List[str]]) -> None:
-        if self.current_display:
-            plt.close(self.current_display)
+    def render_board(self, board: List[List[str]], winner: str = None) -> Tuple[int, int]:
+        self.clicked_position = None
 
         board_with_pieces = self.board_img.copy()
         for i, row in enumerate(board):
@@ -25,11 +25,28 @@ class GomokuVisualizer:
                     position = (j * self.cell_size, i * self.cell_size)
                     board_with_pieces.paste(self.white_stone, position, self.white_stone)
 
-        plt.figure(figsize=(8, 8))
-        plt.imshow(board_with_pieces)
-        plt.axis("off")
-        self.current_display = plt.gcf()
+        fig, ax = plt.subplots(figsize=(8, 8))
+        ax.imshow(board_with_pieces)
+        ax.axis("off")
+
+        if winner:
+            ax.text(
+                self.size * self.cell_size // 2, self.size * self.cell_size + 10,
+                f"Player {winner} wins!",
+                color="red", fontsize=20, ha="center"
+            )
+
+        def on_click(event: MouseEvent):
+            if not winner and event.xdata is not None and event.ydata is not None:
+                x = int(event.ydata // self.cell_size)
+                y = int(event.xdata // self.cell_size)
+                self.clicked_position = (x, y)
+                plt.close(fig)
+
+        fig.canvas.mpl_connect("button_press_event", on_click)
         plt.show()
+
+        return self.clicked_position
 
 class Gomoku:
     def __init__(self, size: int = 15) -> None:
@@ -38,8 +55,8 @@ class Gomoku:
         self.current_player: str = "X"  # X starts the game
         self.visualizer = GomokuVisualizer(size)
 
-    def display_board(self) -> None:
-        self.visualizer.render_board(self.board)
+    def display_board(self, winner: str = None) -> Tuple[int, int]:
+        return self.visualizer.render_board(self.board, winner)
 
     def is_valid_move(self, x: int, y: int) -> bool:
         return 0 <= x < self.size and 0 <= y < self.size and self.board[x][y] == "."
@@ -78,28 +95,28 @@ class Gomoku:
 
     def play(self) -> None:
         print("Welcome to Gomoku!")
-        self.display_board()
 
         while True:
             try:
                 print(f"Player {self.current_player}'s turn.")
-                x, y = map(int, input("Enter your move (row and column): ").split())
+                position = None
+                while position is None:
+                    position = self.display_board()
+                x, y = position
+
                 if self.place_stone(x, y):
-                    self.display_board()
                     if self.check_win(x, y):
+                        self.display_board(winner=self.current_player)
                         print(f"Player {self.current_player} wins!")
                         break
                     self.switch_player()
                 else:
                     print("Invalid move. Try again.")
-            except ValueError:
-                print("Please enter two integers separated by a space.")
             except KeyboardInterrupt:
                 print("\nGame terminated.")
                 break
 
-if __name__ == "__main__":
-    # Generate necessary images if not already present
+    @staticmethod
     def generate_board_image(size: int = 15, cell_size: int = 50) -> None:
         """Generate an empty Gomoku board image."""
         img_size = size * cell_size
@@ -115,6 +132,7 @@ if __name__ == "__main__":
         board.save("gomoku_board.png")
         print("Gomoku board image generated: gomoku_board.png")
 
+    @staticmethod
     def generate_stone_image(color: str, size: int = 40) -> None:
         """Generate a Gomoku stone image."""
         stone = Image.new("RGBA", (size, size), (0, 0, 0, 0))
@@ -123,11 +141,3 @@ if __name__ == "__main__":
         filename = f"{color}_stone.png"
         stone.save(filename)
         print(f"{color.capitalize()} stone image generated: {filename}")
-
-    generate_board_image()
-    generate_stone_image("black")
-    generate_stone_image("white")
-
-    # Start the game
-    game = Gomoku()
-    game.play()
