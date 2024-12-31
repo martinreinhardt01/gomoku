@@ -1,18 +1,45 @@
 from typing import List, Tuple
+from PIL import Image, ImageDraw
+import matplotlib.pyplot as plt
+
+class GomokuVisualizer:
+    def __init__(self, size: int = 15, cell_size: int = 50):
+        self.size = size
+        self.cell_size = cell_size
+        self.board_img = Image.open("gomoku_board.png")
+        self.black_stone = Image.open("black_stone.png").resize((cell_size, cell_size))
+        self.white_stone = Image.open("white_stone.png").resize((cell_size, cell_size))
+        self.current_display = None
+
+    def render_board(self, board: List[List[str]]) -> None:
+        if self.current_display:
+            plt.close(self.current_display)
+
+        board_with_pieces = self.board_img.copy()
+        for i, row in enumerate(board):
+            for j, cell in enumerate(row):
+                if cell == "X":  # Black stone
+                    position = (j * self.cell_size, i * self.cell_size)
+                    board_with_pieces.paste(self.black_stone, position, self.black_stone)
+                elif cell == "O":  # White stone
+                    position = (j * self.cell_size, i * self.cell_size)
+                    board_with_pieces.paste(self.white_stone, position, self.white_stone)
+
+        plt.figure(figsize=(8, 8))
+        plt.imshow(board_with_pieces)
+        plt.axis("off")
+        self.current_display = plt.gcf()
+        plt.show()
 
 class Gomoku:
     def __init__(self, size: int = 15) -> None:
-        self.size: int = size
+        self.size = size
         self.board: List[List[str]] = [["." for _ in range(size)] for _ in range(size)]
         self.current_player: str = "X"  # X starts the game
+        self.visualizer = GomokuVisualizer(size)
 
     def display_board(self) -> None:
-        # Print column numbers, adjust spacing to align with board content
-        print("  " + " ".join(f"{i:2}" for i in range(self.size)))
-        for i, row in enumerate(self.board):
-            # Print row number and row content
-            print(f"{i:2} " + " ".join(f"{cell:2}" for cell in row))
-        print()
+        self.visualizer.render_board(self.board)
 
     def is_valid_move(self, x: int, y: int) -> bool:
         return 0 <= x < self.size and 0 <= y < self.size and self.board[x][y] == "."
@@ -56,7 +83,7 @@ class Gomoku:
         while True:
             try:
                 print(f"Player {self.current_player}'s turn.")
-                x, y = map(int, input("Enter your move (row, space, column): ").split())
+                x, y = map(int, input("Enter your move (row and column): ").split())
                 if self.place_stone(x, y):
                     self.display_board()
                     if self.check_win(x, y):
@@ -72,5 +99,35 @@ class Gomoku:
                 break
 
 if __name__ == "__main__":
+    # Generate necessary images if not already present
+    def generate_board_image(size: int = 15, cell_size: int = 50) -> None:
+        """Generate an empty Gomoku board image."""
+        img_size = size * cell_size
+        board = Image.new("RGB", (img_size, img_size), "burlywood")
+        draw = ImageDraw.Draw(board)
+
+        # Draw the grid
+        for i in range(size):
+            line_pos = i * cell_size
+            draw.line([(line_pos, 0), (line_pos, img_size)], fill="black", width=1)
+            draw.line([(0, line_pos), (img_size, line_pos)], fill="black", width=1)
+
+        board.save("gomoku_board.png")
+        print("Gomoku board image generated: gomoku_board.png")
+
+    def generate_stone_image(color: str, size: int = 40) -> None:
+        """Generate a Gomoku stone image."""
+        stone = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(stone)
+        draw.ellipse([(0, 0), (size, size)], fill=color)
+        filename = f"{color}_stone.png"
+        stone.save(filename)
+        print(f"{color.capitalize()} stone image generated: {filename}")
+
+    generate_board_image()
+    generate_stone_image("black")
+    generate_stone_image("white")
+
+    # Start the game
     game = Gomoku()
     game.play()
